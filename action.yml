@@ -24,6 +24,9 @@ inputs:
   endpoint:
     required: false
     description: 'endpoint URI to send requests'
+  mode:
+    required: false
+    description: 'upload/download'
 outputs:
   object_key:
     description: 'object key'

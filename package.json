@@ -7,7 +7,9 @@
   "repository": "https://github.com/shallwefootball/upload-s3-action",
   "author": "Dong Keon Kim <amos@shallwefootball.com>",
   "scripts": {
-    "package": "ncc build index.js -o dist"
+    "package": "esbuild --tree-shaking=true --define:process.env['RUN_DEV']=false --minify --platform=node --bundle ./index.ts --outdir=dist",
+    "test": "tsx --env-file=.env ./index.ts",
+    "download": "tsx --env-file=download.env ./index.ts"
   },
   "dependencies": {
     "@actions/core": "^1.10.0",
@@ -18,8 +20,13 @@
     "slash": "^5.0.0"
   },
   "devDependencies": {
+    "@types/klaw-sync": "^6.0.5",
+    "@types/mime-types": "^2.1.4",
+    "@types/shortid": "^2.2.0",
     "@vercel/ncc": "^0.34.0",
-    "prettier": "^2.7.1"
+    "esbuild": "^0.25.3",
+    "prettier": "^2.7.1",
+    "tsx": "^4.19.4"
   },
   "prettier": {
     "singleQuote": true
