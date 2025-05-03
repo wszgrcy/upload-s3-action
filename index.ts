@@ -46,7 +46,6 @@ if (ENDPOINT) {
 const s3: S3 = new S3(s3options);
 const destinationDir =
   DESTINATION_DIR === '/' ? shortid.generate() : DESTINATION_DIR;
-const paths = klawSync(SOURCE_DIR, { nodir: true });
 
 function upload(params: S3.Types.PutObjectRequest): Promise<string> {
   return new Promise((resolve) => {
@@ -79,6 +78,8 @@ function download(params: S3.Types.GetObjectRequest) {
 async function run() {
   if (MODE === 'upload') {
     core.info('上传');
+    const paths = klawSync(SOURCE_DIR, { nodir: true });
+
     const sourceDir: string = slash(path.join(process.cwd(), SOURCE_DIR));
     const uploadPromises = paths.map((p) => {
       const fileStream = fs.createReadStream(p.path);
