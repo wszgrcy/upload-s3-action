@@ -78,6 +78,7 @@ function download(params: S3.Types.GetObjectRequest) {
 
 async function run() {
   if (MODE === 'upload') {
+    core.info('上传');
     const sourceDir: string = slash(path.join(process.cwd(), SOURCE_DIR));
     const uploadPromises = paths.map((p) => {
       const fileStream = fs.createReadStream(p.path);
@@ -100,6 +101,7 @@ async function run() {
     core.setOutput('object_key', destinationDir);
     core.setOutput('object_locations', locations);
   } else if (MODE === 'download') {
+    core.info('下载');
     let list = await s3
       .listObjectsV2({
         Bucket: BUCKET,
@@ -110,6 +112,8 @@ async function run() {
     for (const item of list.Contents!) {
       await download({ Bucket: BUCKET, Key: item.Key! });
     }
+  }else{
+    core.error('模式错误,只能为下载或上传')
   }
 }
 
