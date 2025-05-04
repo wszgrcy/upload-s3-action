@@ -27,11 +27,14 @@ inputs:
   mode:
     required: false
     description: 'upload/download'
+  source_ignore:
+    required: false
+    description: 'ignore'
 outputs:
   object_key:
     description: 'object key'
-  object_locations:
-    description: 'object locations'
+  object_result:
+    description: 'upload object_result'
 runs:
   using: 'node20'
   main: 'dist/index.js'
