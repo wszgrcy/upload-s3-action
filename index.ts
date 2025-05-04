@@ -55,7 +55,7 @@ function upload(filePath: string, params: S3.Types.PutObjectRequest) {
     .promise()
     .then((data) => {
       core.info(`✅ ${filePath} => ${data.Key}`);
-      core.info(`🔗 ${data.Location}`);
+      // core.info(`🔗 ${data.Location}`);
       return data;
     });
 }
@@ -80,7 +80,7 @@ function download(params: S3.Types.GetObjectRequest) {
 async function run() {
   if (MODE === 'upload') {
     let { fileTypeFromFile } = await import('file-type');
-    core.info('⏫');
+    core.info('⏫⏫⏫');
     const paths = sync(SOURCE_DIR, {
       ignore: SOURCE_IGNORE,
       cwd: process.cwd(),
@@ -101,9 +101,8 @@ async function run() {
     let result = await Promise.all(uploadPromises);
 
     core.setOutput('object_key', destinationDir);
-    core.setOutput('object_result', result);
   } else if (MODE === 'download') {
-    core.info('⏬');
+    core.info('⏬⏬⏬');
     let list = await s3
       .listObjectsV2({
         Bucket: BUCKET,
