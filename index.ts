@@ -4,9 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import shortid from 'shortid';
 import { default as slash } from 'slash';
-import klawSync from 'klaw-sync';
-import { lookup } from 'mime-types';
-
+import { sync } from 'fast-glob';
 const isDEV = process.env['RUN_DEV'] === 'true';
 const AWS_KEY_ID = isDEV
   ? process.env['AWS_KEY_ID']!
@@ -22,6 +20,9 @@ const BUCKET: string = isDEV
 const SOURCE_DIR: string = isDEV
   ? process.env['SOURCE_DIR']!
   : core.getInput('source_dir', { required: true });
+const SOURCE_IGNORE = isDEV
+  ? process.env['SOURCE_IGNORE']?.split(',')
+  : core.getMultilineInput('source_ignore', { required: false });
 const DESTINATION_DIR: string =
   (isDEV
     ? process.env['DESTINATION_DIR']!
@@ -47,15 +48,16 @@ const s3: S3 = new S3(s3options);
 const destinationDir =
   DESTINATION_DIR === '/' ? shortid.generate() : DESTINATION_DIR;
 
-function upload(params: S3.Types.PutObjectRequest): Promise<string> {
-  return new Promise((resolve) => {
-    s3.upload(params, (err, data) => {
-      if (err) core.error(err);
-      core.info(`uploaded - ${data.Key}`);
-      core.info(`located - ${data.Location}`);
-      resolve(data.Location);
+function upload(filePath: string, params: S3.Types.PutObjectRequest) {
+  const fileStream = fs.createReadStream(filePath);
+  return s3
+    .upload({ ...params, Body: fileStream })
+    .promise()
+    .then((data) => {
+      core.info(`✅ ${filePath} => ${data.Key}`);
+      core.info(`🔗 ${data.Location}`);
+      return data;
     });
-  });
 }
 function download(params: S3.Types.GetObjectRequest) {
   let outputFilePath = path.join(process.cwd(), destinationDir, params.Key);
@@ -77,32 +79,31 @@ function download(params: S3.Types.GetObjectRequest) {
 
 async function run() {
   if (MODE === 'upload') {
-    core.info('上传');
-    const paths = klawSync(SOURCE_DIR, { nodir: true });
+    let { fileTypeFromFile } = await import('file-type');
+    core.info('⏫');
+    const paths = sync(SOURCE_DIR, {
+      ignore: SOURCE_IGNORE,
+      cwd: process.cwd(),
+    });
+    const uploadPromises = paths.map(async (relPath) => {
+      let absPath = path.join(process.cwd(), relPath);
+      const bucketPath = slash(path.join(destinationDir, relPath));
 
-    const sourceDir: string = slash(path.join(process.cwd(), SOURCE_DIR));
-    const uploadPromises = paths.map((p) => {
-      const fileStream = fs.createReadStream(p.path);
-      const bucketPath = slash(
-        path.join(destinationDir, slash(path.relative(sourceDir, p.path)))
-      );
       const params: S3.Types.PutObjectRequest = {
         Bucket: BUCKET,
         ACL: 'public-read',
-        Body: fileStream,
         Key: bucketPath,
-        ContentType: lookup(p.path) || 'text/plain',
+        ContentType: (await fileTypeFromFile(absPath))?.mime || 'text/plain',
       };
-      return upload(params);
+      return upload(absPath, params);
     });
 
-    let locations = await Promise.all(uploadPromises);
-    core.info(`object key - ${destinationDir}`);
-    core.info(`object locations - ${locations}`);
+    let result = await Promise.all(uploadPromises);
+
     core.setOutput('object_key', destinationDir);
-    core.setOutput('object_locations', locations);
+    core.setOutput('object_result', result);
   } else if (MODE === 'download') {
-    core.info('下载');
+    core.info('⏬');
     let list = await s3
       .listObjectsV2({
         Bucket: BUCKET,
@@ -113,8 +114,8 @@ async function run() {
     for (const item of list.Contents!) {
       await download({ Bucket: BUCKET, Key: item.Key! });
     }
-  }else{
-    core.error('模式错误,只能为下载或上传')
+  } else {
+    core.error(`☑️upload ☑️download ❌${MODE}`);
   }
 }
 
